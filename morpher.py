@@ -8,14 +8,13 @@ from math import cos,sin,pi
 
 # image pen
 class IPen:
-    def __init__(self,bx,by,x,y,img,color):
-        self.x=x
-        self.y=y
+    def __init__(self,bx,by,x,y,img,color,m,n):
+        self.x,self.y=x,y
         self.a=0
         self.img=img
         self.color=color
-        self.bx=bx
-        self.by=by
+        self.bx,self.by=bx,by
+        self.m,self.n=m,n
         self.nexc=0
 
     def fdjmp(self,r):
@@ -23,14 +22,12 @@ class IPen:
         y2=round(self.y-r*sin(self.a*pi/180))
         # boundary checking
         if x2>=self.bx or y2>=self.by or x2<0 or y2<0:
-            #print('exceeded bounds at',(x2,y2))
             self.nexc+=1
             return
-        m,n=8,1
         oldpix=self.img.getpixel((x2,y2))
-        rv=round((m*oldpix[0]+n*self.color[0])/(m+n))
-        gv=round((m*oldpix[1]+n*self.color[1])/(m+n))
-        bv=round((m*oldpix[2]+n*self.color[2])/(m+n))
+        rv=round((self.m*oldpix[0]+self.n*self.color[0])/(self.m+self.n))
+        gv=round((self.m*oldpix[1]+self.n*self.color[1])/(self.m+self.n))
+        bv=round((self.m*oldpix[2]+self.n*self.color[2])/(self.m+self.n))
         self.img.putpixel((x2,y2),(rv,gv,bv))
         self.x=x2
         self.y=y2
@@ -58,8 +55,6 @@ nmad=ad/(np.max(np.abs(ad),axis=0))
 n=len(ad)
 print(n)
 print(a.rate)
-cnv=np.convolve(nmad[:,0],nmad[:,0],'same')
-print(cnv.shape)
 
 # read config
 cfgfn=sys.argv[2]
@@ -71,6 +66,7 @@ with open(cfgfn) as cfgf:
     ix,iy=int(l2[0]),int(l2[1])
     l3=cfgf.readline().rstrip().split(' ')
     color=(int(l3[0]),int(l3[1]),int(l3[2]))
+    pm,pn=int(l3[3]),int(l3[4])
     l4=cfgf.readline().rstrip().split(' ')
     rtcoeff,rtdelta=float(l4[0]),float(l4[1])
     l5=cfgf.readline().rstrip().split(' ')
@@ -79,9 +75,12 @@ with open(cfgfn) as cfgf:
     mode=l6
     print('configuration loaded from '+cfgfn)
 
+if mode=='cnv':
+    cnv=np.convolve(nmad[:,0],nmad[:,0],'same')
+
 # image writing
 x=Image.new('RGB',(iw,ih),(0,0,0))
-ipen=IPen(iw,ih,ix,iy,x,color)
+ipen=IPen(iw,ih,ix,iy,x,color,pm,pn)
 nsec=n//a.rate
 print('nsec=',nsec)
 for i in range(nsec+1):
@@ -89,6 +88,7 @@ for i in range(nsec+1):
     wz=wa+a.rate
     if wz>n:
         wz=n
+    print('t=%04d [%09d-%09d]'%(i,wa,wz))
     for j in range(wz-wa):
         if mode=='cnv':
             cnvdat=cnv[wa+j]
